@@ -24,7 +24,7 @@ impl PamHooks for PamSober {
         // TODO: use args to change difficulty ;-)
         // let args: HashMap<&str, &str> = args.iter().map(|s| {
         // let mut parts = s.splitn(2, "=");
-        // (parts.next().unwrap(), parts.next().unwrap_or(""))
+        // (parts.next().unwrap(), parts.next().unwrap_or(""))\
         // }).collect();
 
         // TODO: maybe we can change difficulty base on user?

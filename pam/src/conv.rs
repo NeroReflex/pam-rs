@@ -12,12 +12,12 @@ use crate::{
 #[repr(C)]
 struct PamMessage {
     msg_style: PamMessageStyle,
-    msg:       *const c_char,
+    msg: *const c_char,
 }
 
 #[repr(C)]
 struct PamResponse {
-    resp:         *const c_char,
+    resp: *const c_char,
     resp_retcode: libc::c_int, // Unused - always zero
 }
 
@@ -63,7 +63,7 @@ impl<'a> Conv<'a> {
             1,
             &&PamMessage {
                 msg_style: style,
-                msg:       msg_cstr.as_ptr(),
+                msg: msg_cstr.as_ptr(),
             },
             &mut resp_ptr,
             self.0.appdata_ptr,

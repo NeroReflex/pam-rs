@@ -9,5 +9,5 @@ name = "pam_sober"
 crate-type = ["cdylib"]
 
 [dependencies]
-pam-module = { path = "../../pam-module" }
+pam = { path = "../../" }
 rand = "0.8.5"

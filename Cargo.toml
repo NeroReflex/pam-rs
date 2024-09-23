@@ -1,5 +1,5 @@
 [workspace]
-members = ["pam-module", "examples/pam-http", "examples/pam-kv", "examples/pam-sober"]
+members = ["pam", "pam/examples/pam-http", "pam/examples/pam-kv", "pam/examples/pam-sober"]
 
 [profile.release]
 incremental = true

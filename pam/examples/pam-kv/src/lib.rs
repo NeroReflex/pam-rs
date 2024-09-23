@@ -103,7 +103,7 @@ impl PamHooksResult for PamKeyValue {
         let pass = pamh
             .get_authtok(ItemType::AuthTok, None)
             .tap(|x| trace!("pass: {x:?}"))?
-            .unwrap_or("".to_string());
+            .unwrap_or("".into());
 
         let mut file = File::open(db)
             .await
@@ -133,29 +133,27 @@ impl PamHooksResult for PamKeyValue {
             .map(|x| (x.username.clone(), x))
             .collect();
 
-        match data.get(&user) {
+        match data.get(&user.to_string()) {
             None => {
                 error!("user not existing in database");
                 Err(PAM_USER_UNKNOWN)
             }
-            Some(user) => {
-                match &user.password {
-                    Password::Raw(password) if pass == *password => {
-                        trace!("found user");
-                        Ok(())
-                    }
-                    Password::Encrypted(hash)
-                        if hash.verify_password(&algorithms, &pass).is_ok() =>
-                    {
-                        trace!("found user");
-                        Ok(())
-                    }
-                    _ => {
-                        error!("wrong password");
-                        Err(PAM_AUTH_ERR)
-                    }
+            Some(user) => match &user.password {
+                Password::Raw(password) if pass == *password => {
+                    trace!("found user");
+                    Ok(())
                 }
-            }
+                Password::Encrypted(hash)
+                    if hash.verify_password(&algorithms, &pass.as_bytes()).is_ok() =>
+                {
+                    trace!("found user");
+                    Ok(())
+                }
+                _ => {
+                    error!("wrong password");
+                    Err(PAM_AUTH_ERR)
+                }
+            },
         }
     }
 
