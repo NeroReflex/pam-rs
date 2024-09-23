@@ -25,15 +25,20 @@
 //! a Linux system.  That means that it might take some work to get this library
 //! to work on other platforms.
 
-#![cfg(not(feature = "std"))]
+#[cfg(not(feature = "std"))]
 extern crate alloc;
+
+#[cfg(feature = "std")]
+extern crate std as alloc;
 
 pub mod constants;
 pub mod conv;
 pub mod items;
-#[doc(hidden)] pub mod macros;
+#[doc(hidden)]
+pub mod macros;
 pub mod module;
 
 #[cfg(not(feature = "std"))]
 pub use alloc::vec::Vec;
-#[cfg(feature = "std")] pub use std::vec::Vec;
+#[cfg(feature = "std")]
+pub use std::vec::Vec;

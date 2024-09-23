@@ -1,5 +1,26 @@
 [workspace]
-members = ["pam", "pam/examples/pam-http", "pam/examples/pam-kv", "pam/examples/pam-sober"]
+resolver = "2"
+members = ["examples/pam-http", "examples/pam-kv", "examples/pam-sober"]
+
+[package]
+name = "pam"
+description = "PAM bindings for Rust"
+version = "0.1.1"
+authors = [ "Anthony Nowell <anowell@gmail.com>" ]
+repository = "https://github.com/anowell/pam-rs"
+readme = "README.md"
+keywords = ["pam", "ffi", "linux", "authentication"]
+license = "MIT"
+edition = "2021"
+
+
+[dependencies]
+libc = "0.2.158"
+strum = { version = "0.24", features = ["derive"] }
+
+[features]
+default = ["std"]
+std = []
 
 [profile.release]
 incremental = true
