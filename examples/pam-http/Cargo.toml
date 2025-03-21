@@ -9,5 +9,5 @@ name = "pam_http"
 crate-type = ["cdylib"]
 
 [dependencies]
-pam = { version = "*", path = "../../" }
+pam-bindings = { version = "*", path = "../../" }
 reqwest = { version = "0.11.27", features = ["blocking"] }
