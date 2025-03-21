@@ -20,6 +20,31 @@ pub struct PamHandle {
     _data: [u8; 0],
 }
 
+// Implementation detail: the discriminant values in the following enum
+// corresponds to the int values of the corresponding constants in
+// glibc syslog.h
+//
+/// Log levels as defined in the syslog(3) manual page.
+/// #[cfg(target_os = "linux")]
+pub enum LogLevel {
+    /// system is unusable, corresponds to LOG_EMERG
+    Emergency = 0,
+    /// action must be taken immediately, corresponds to LOG_ALERT
+    Alert = 1,
+    /// critical conditions, corresponds to LOG_CRIT
+    Critical = 2,
+    /// error conditions, corresponds to LOG_ERR
+    Error = 3,
+    /// warning conditions, corresponds to LOG_WARN
+    Warning = 4,
+    /// normal, but significant, condition, corresponds to LOG_NOTICE
+    Notice = 5,
+    /// informational message, corresponds to LOG_INFO
+    Info = 6,
+    /// debug-level message, corresponds to LOG_DEBUG
+    Debug = 7,
+}
+
 #[link(name = "pam")]
 extern "C" {
     fn pam_get_data(
@@ -75,6 +100,9 @@ extern "C" {
         authtok: &*mut c_char,
         prompt: *const c_char,
     ) -> PamResultCode;
+
+    #[cfg(target_os = "linux")]
+    fn pam_syslog(pamh: *const PamHandle, priority: libc::c_int, format: *const c_char, ...);
 }
 
 pub extern "C" fn cleanup<T>(_: *const PamHandle, c_data: *mut libc::c_void, _: PamResultCode) {
@@ -289,6 +317,19 @@ impl PamHandle {
                 })
             }
             e => Err(e),
+        }
+    }
+
+    /// Log a message with the specified level to the syslog.
+    ///
+    /// This method wraps pam_syslog, which prefixes the message with a string indicating
+    /// the relevant PAM context.
+    #[cfg(target_os = "linux")]
+    pub fn log(&self, level: LogLevel, message: String) {
+        let percent_s = CString::new("%s").unwrap();
+        let message = CString::new(message).unwrap();
+        unsafe {
+            pam_syslog(self, level as i32, percent_s.as_ptr(), message.as_ptr());
         }
     }
 }
