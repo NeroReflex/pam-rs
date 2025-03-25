@@ -101,6 +101,11 @@ extern "C" {
         prompt: *const c_char,
     ) -> PamResultCode;
 
+    fn pam_putenv(
+        pamh: *const PamHandle,
+        name_value: *const c_char
+    ) -> PamResultCode;
+
     #[cfg(target_os = "linux")]
     fn pam_syslog(pamh: *const PamHandle, priority: libc::c_int, format: *const c_char, ...);
 }
@@ -317,6 +322,42 @@ impl PamHandle {
                 })
             }
             e => Err(e),
+        }
+    }
+
+    pub fn env_set<'a>(&self, name: Cow<'a, str>, value: Cow<'a, str>) -> PamResult<()> {
+        let name_value = format!("{}={}", name.replace("=", "_"), value);
+        let c_string = CString::new(name_value).unwrap();
+
+        let code = unsafe { pam_putenv(self, c_string.as_ptr()) };
+
+        match code {
+            PAM_SUCCESS => Ok(()),
+            err => Err(err),
+        }
+    }
+
+    pub fn env_reset<'a>(&self, name: Cow<'a, str>) -> PamResult<()> {
+        let name_value = format!("{}=", name.replace("=", "_"));
+        let c_string = CString::new(name_value).unwrap();
+
+        let code = unsafe { pam_putenv(self, c_string.as_ptr()) };
+
+        match code {
+            PAM_SUCCESS => Ok(()),
+            err => Err(err),
+        }
+    }
+
+    pub fn env_remove<'a>(&self, name: Cow<'a, str>) -> PamResult<()> {
+        let name_value = format!("{}", name.replace("=", "_"));
+        let c_string = CString::new(name_value).unwrap();
+
+        let code = unsafe { pam_putenv(self, c_string.as_ptr()) };
+
+        match code {
+            PAM_SUCCESS => Ok(()),
+            err => Err(err),
         }
     }
 
