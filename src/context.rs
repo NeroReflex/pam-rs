@@ -23,3 +23,9 @@ bitflags! {
 		const REFRESH_CRED = crate::constants::PAM_REFRESH_CRED as libc::c_int;
 	}
 }
+
+#[allow(clippy::upper_case_acronyms)]
+impl Flag {
+	/// No flags; use default behaviour.
+	pub const NONE: Flag = Flag::empty();
+}
