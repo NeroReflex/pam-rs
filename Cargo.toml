@@ -15,8 +15,10 @@ edition = "2021"
 
 
 [dependencies]
-libc = "0.2.158"
+libc = { version = "*" }
 strum = { version = "0.24", features = ["derive"] }
+bitflags = { version="^2", features = ["serde"] }
+serde = { version="^1", optional=true, features=["derive"] }
 
 [features]
 default = ["std"]

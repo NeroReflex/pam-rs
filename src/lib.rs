@@ -42,3 +42,7 @@ pub mod module;
 pub use alloc::vec::Vec;
 #[cfg(feature = "std")]
 pub use std::vec::Vec;
+
+pub mod context;
+pub mod conversation;
+pub mod error;

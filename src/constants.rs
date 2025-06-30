@@ -28,9 +28,10 @@ pub const PAM_BINARY_PROMPT: PamMessageStyle = 7;
 
 // The Linux-PAM return values
 // see /usr/include/security/_pam_types.h
-#[allow(non_camel_case_types, dead_code)]
-#[derive(Debug, Display, PartialEq)]
+#[allow(non_camel_case_types, clippy::upper_case_acronyms, dead_code)]
+#[derive(Debug, Display, Copy, Clone, PartialEq, Eq, Hash)]
 #[repr(C)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum PamResultCode {
     PAM_SUCCESS = 0,
     PAM_OPEN_ERR = 1,
@@ -64,4 +65,10 @@ pub enum PamResultCode {
     PAM_BAD_ITEM = 29,
     PAM_CONV_AGAIN = 30,
     PAM_INCOMPLETE = 31,
+}
+
+impl From<i32> for PamResultCode {
+    fn from(value: i32) -> Self {
+        unsafe { std::mem::transmute_copy(&value) }
+    }
 }
