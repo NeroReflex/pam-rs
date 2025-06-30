@@ -5,7 +5,7 @@ bitflags! {
 	#[allow(clippy::upper_case_acronyms)]
 	#[repr(transparent)]
 	#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(transparent))]
-	#[derive(Copy, Clone)]
+	#[derive(Default, Copy, Clone, PartialEq, Eq)]
 	pub struct Flag: libc::c_int {
 		/// Don't generate any messages
 		const SILENT = crate::constants::PAM_SILENT as libc::c_int;
