@@ -14,7 +14,8 @@
 ///
 /// use pam::{
 ///     constants::{PamFlag, PamResultCode},
-///     module::{RawPamHandle, PamHandle, PamHooks},
+///     module::{PamHandle, PamHooks},
+///     error::PamResult
 /// };
 ///
 /// # fn main() {}
@@ -23,17 +24,17 @@
 ///
 /// impl PamHooks for MyPamModule {
 ///     fn sm_authenticate(
-///         pamh: &mut RawPamHandle,
+///         pamh: &mut PamHandle,
 ///         args: Vec<&CStr>,
 ///         flags: PamFlag,
-///     ) -> PamResultCode {
+///     ) -> PamResult<()> {
 ///         println!("Everybody is authenticated!");
-///         PamResultCode::PAM_SUCCESS
+///         Ok(())
 ///     }
 ///
-///     fn acct_mgmt(pamh: &mut RawPamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
+///     fn acct_mgmt(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResult<()> {
 ///         println!("Everybody is authorized!");
-///         PamResultCode::PAM_SUCCESS
+///         Ok(())
 ///     }
 /// }
 /// ```
@@ -64,7 +65,7 @@ macro_rules! pam_hooks {
             ) -> PamResultCode {
                 let args = extract_argv(argc, argv);
                 let mut handle = unsafe { PamHandle::new(pamh) }.unwrap();
-                super::$ident::acct_mgmt(&mut handle, args, flags)
+                PamResultCode::from(super::$ident::acct_mgmt(&mut handle, args, flags))
             }
 
             #[no_mangle]
@@ -76,7 +77,7 @@ macro_rules! pam_hooks {
             ) -> PamResultCode {
                 let args = extract_argv(argc, argv);
                 let mut handle = unsafe { PamHandle::new(pamh) }.unwrap();
-                super::$ident::sm_authenticate(&mut handle, args, flags)
+                PamResultCode::from(super::$ident::sm_authenticate(&mut handle, args, flags))
             }
 
             #[no_mangle]
@@ -88,7 +89,7 @@ macro_rules! pam_hooks {
             ) -> PamResultCode {
                 let args = extract_argv(argc, argv);
                 let mut handle = unsafe { PamHandle::new(pamh) }.unwrap();
-                super::$ident::sm_chauthtok(&mut handle, args, flags)
+                PamResultCode::from(super::$ident::sm_chauthtok(&mut handle, args, flags))
             }
 
             #[no_mangle]
@@ -100,7 +101,7 @@ macro_rules! pam_hooks {
             ) -> PamResultCode {
                 let args = extract_argv(argc, argv);
                 let mut handle = unsafe { PamHandle::new(pamh) }.unwrap();
-                super::$ident::sm_close_session(&mut handle, args, flags)
+                PamResultCode::from(super::$ident::sm_close_session(&mut handle, args, flags))
             }
 
             #[no_mangle]
@@ -112,7 +113,7 @@ macro_rules! pam_hooks {
             ) -> PamResultCode {
                 let args = extract_argv(argc, argv);
                 let mut handle = unsafe { PamHandle::new(pamh) }.unwrap();
-                super::$ident::sm_open_session(&mut handle, args, flags)
+                PamResultCode::from(super::$ident::sm_open_session(&mut handle, args, flags))
             }
 
             #[no_mangle]
@@ -124,7 +125,7 @@ macro_rules! pam_hooks {
             ) -> PamResultCode {
                 let args = extract_argv(argc, argv);
                 let mut handle = unsafe { PamHandle::new(pamh) }.unwrap();
-                super::$ident::sm_setcred(&mut handle, args, flags)
+                PamResultCode::from(super::$ident::sm_setcred(&mut handle, args, flags))
             }
         }
     };

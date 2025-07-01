@@ -32,17 +32,17 @@ extern crate alloc;
 extern crate std as alloc;
 
 pub mod constants;
+pub mod context;
 pub mod conv;
+pub mod conversation;
+pub mod error;
 pub mod items;
 #[doc(hidden)]
 pub mod macros;
 pub mod module;
+pub mod session;
 
 #[cfg(not(feature = "std"))]
 pub use alloc::vec::Vec;
 #[cfg(feature = "std")]
 pub use std::vec::Vec;
-
-pub mod context;
-pub mod conversation;
-pub mod error;

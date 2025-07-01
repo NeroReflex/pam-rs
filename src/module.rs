@@ -1,12 +1,21 @@
 //! Functions for use in pam modules.
 
-use alloc::{borrow::Cow, boxed::Box, ffi::CString, vec::Vec};
-use core::{ffi::CStr, ptr::NonNull};
+use alloc::{borrow::Cow, boxed::Box, collections::HashMap, ffi::CString, vec::Vec};
+use core::{
+    ffi::CStr,
+    ptr::{null, null_mut, NonNull},
+};
 
 use libc::c_char;
 
 use crate::{
-    constants::{PamFlag, PamResultCode, PamResultCode::PAM_SUCCESS},
+    constants::{
+        PamFlag,
+        PamResultCode::{self, PAM_SUCCESS},
+    },
+    conv::{into_pam_conv, RawPamConv},
+    conversation::ConversationHandler,
+    error::{ErrorCode, PamResult},
     items::ItemType,
 };
 
@@ -47,6 +56,35 @@ pub enum LogLevel {
 
 #[link(name = "pam")]
 extern "C" {
+    fn pam_start(
+        service_name: *const libc::c_char,
+        user: *const libc::c_char,
+        pam_conversation: *const RawPamConv,
+        pamh: *mut *mut RawPamHandle,
+    ) -> PamResultCode;
+
+    fn pam_start_confdir(
+        service_name: *const libc::c_char,
+        user: *const libc::c_char,
+        pam_conversation: *const RawPamConv,
+        confdir: *const libc::c_char,
+        pamh: *mut *mut RawPamHandle,
+    ) -> PamResultCode;
+
+    fn pam_end(pamh: *mut RawPamHandle, pam_status: PamResultCode) -> PamResultCode;
+
+    fn pam_authenticate(pamh: *mut RawPamHandle, flags: libc::c_int) -> PamResultCode;
+
+    fn pam_setcred(pamh: *mut RawPamHandle, flags: libc::c_int) -> PamResultCode;
+
+    fn pam_acct_mgmt(pamh: *mut RawPamHandle, flags: libc::c_int) -> PamResultCode;
+
+    fn pam_open_session(pamh: *mut RawPamHandle, flags: libc::c_int) -> PamResultCode;
+
+    fn pam_close_session(pamh: *mut RawPamHandle, flags: libc::c_int) -> PamResultCode;
+
+    fn pam_chauthtok(pamh: *mut RawPamHandle, flags: libc::c_int) -> PamResultCode;
+
     fn pam_get_data(
         pamh: *const RawPamHandle,
         module_data_name: *const c_char,
@@ -103,6 +141,10 @@ extern "C" {
 
     fn pam_putenv(pamh: *const RawPamHandle, name_value: *const c_char) -> PamResultCode;
 
+    fn pam_getenv(pamh: *const RawPamHandle, name: *const libc::c_char) -> *const libc::c_char;
+
+    fn pam_getenvlist(pamh: *const RawPamHandle) -> *mut *mut libc::c_char;
+
     #[cfg(target_os = "linux")]
     fn pam_syslog(pamh: *const RawPamHandle, priority: libc::c_int, format: *const c_char, ...);
 }
@@ -112,8 +154,6 @@ pub extern "C" fn cleanup<T>(_: *const RawPamHandle, c_data: *mut libc::c_void, 
         drop(Box::from_raw(c_data.cast::<T>()));
     }
 }
-
-pub type PamResult<T> = Result<T, PamResultCode>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PamHandle {
@@ -155,11 +195,53 @@ impl From<PamHandle> for *const RawPamHandle {
 }
 
 impl PamHandle {
+    pub unsafe fn start<'a, ConvT>(
+        service: Cow<'a, str>,
+        username: Option<Cow<'a, str>>,
+        boxed_conv: Box<ConvT>,
+    ) -> PamResult<Self>
+    where
+        ConvT: ConversationHandler,
+    {
+        let mut handle: *mut RawPamHandle = null_mut();
+
+        // Create callback struct for C code
+        let pam_conv = into_pam_conv(boxed_conv);
+
+        let c_service = CString::new(service.to_string()).unwrap();
+
+        // Start the PAM context
+        let res = unsafe {
+            pam_start(
+                c_service.as_ptr(),
+                match username {
+                    Some(user) => CString::new(user.to_string()).unwrap().as_ptr(),
+                    None => null(),
+                },
+                &pam_conv,
+                &mut handle,
+            )
+        };
+
+        if PamResultCode::PAM_SUCCESS != res {
+            return Err(res.into());
+        }
+
+        match NonNull::new(handle) {
+            Some(handle) => Ok(Self { handle }),
+            None => Err(ErrorCode::ABORT),
+        }
+    }
+
+    pub unsafe fn end(&self, pam_status: PamResultCode) -> PamResult<()> {
+        unsafe { pam_end(self.handle.as_ptr(), pam_status) }.into()
+    }
+
     /// Gets some value, identified by `key`, that has been set by the module
     /// previously.
     ///
     /// See `pam_get_data` in
-    /// http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html
+    /// <http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html>
     ///
     /// # Errors
     ///
@@ -178,7 +260,7 @@ impl PamHandle {
             let data: &T = &*typed_ptr;
             Ok(data)
         } else {
-            Err(res)
+            return Err(res.into());
         }
     }
 
@@ -186,33 +268,29 @@ impl PamHandle {
     /// lives as long as the current pam cycle.
     ///
     /// See `pam_set_data` in
-    /// http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html
+    /// <http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html>
     ///
     /// # Errors
     ///
     /// Returns an error if the underlying PAM function call fails.
     pub fn set_data<T>(&self, key: &str, data: Box<T>) -> PamResult<()> {
         let c_key = CString::new(key).unwrap();
-        let res = unsafe {
+        unsafe {
             pam_set_data(
                 self.handle.as_ptr(),
                 c_key.as_ptr(),
                 Box::into_raw(data).cast::<libc::c_void>(),
                 cleanup::<T>,
             )
-        };
-        if PamResultCode::PAM_SUCCESS == res {
-            Ok(())
-        } else {
-            Err(res)
         }
+        .into()
     }
 
-    /// Retrieves a value that has been set, possibly by the pam client.  This
-    /// is particularly useful for getting a `PamConv` reference.
+    /// Retrieves a value that has been set, possibly by the pam client.
+    /// This is particularly useful for getting a `PamConv` reference.
     ///
     /// See `pam_get_item` in
-    /// http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html
+    /// <http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html>
     ///
     /// # Errors
     ///
@@ -229,11 +307,11 @@ impl PamHandle {
             };
             (r, t)
         };
-        if PamResultCode::PAM_SUCCESS == res {
-            Ok(item)
-        } else {
-            Err(res)
+        if PamResultCode::PAM_SUCCESS != res {
+            return Err(res.into());
         }
+
+        Ok(item)
     }
 
     /// Sets a value in the pam context. The value can be retrieved using
@@ -242,7 +320,7 @@ impl PamHandle {
     /// Note that all items are strings, except `PAM_CONV` and `PAM_FAIL_DELAY`.
     ///
     /// See `pam_set_item` in
-    /// http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html
+    /// <http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html>
     ///
     /// # Errors
     ///
@@ -252,17 +330,29 @@ impl PamHandle {
     ///
     /// Panics if the provided item key contains a nul byte
     pub fn set_item_str<T: crate::items::Item>(&mut self, item: T) -> PamResult<()> {
-        let res = unsafe {
+        unsafe {
             pam_set_item(
                 self.handle.as_ptr(),
                 T::type_id(),
                 item.into_raw().cast::<libc::c_void>(),
             )
-        };
-        if PamResultCode::PAM_SUCCESS == res {
-            Ok(())
-        } else {
-            Err(res)
+        }
+        .into()
+    }
+
+    pub(crate) fn raw_set_item(
+        &mut self,
+        item_type: ItemType,
+        item: *const libc::c_void,
+    ) -> PamResult<()> {
+        unsafe { pam_set_item(self.handle.as_ptr(), item_type, &*item) }.into()
+    }
+
+    pub(crate) fn raw_get_item(&self, item_type: ItemType) -> PamResult<*const libc::c_void> {
+        let mut result: *const libc::c_void = null();
+        match unsafe { pam_get_item(self.handle.as_ptr(), item_type, &mut result) } {
+            PAM_SUCCESS => Ok(result),
+            err => Err(err.into()),
         }
     }
 
@@ -271,7 +361,7 @@ impl PamHandle {
     /// This is really a specialization of `get_item`.
     ///
     /// See `pam_get_user` in
-    /// http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html
+    /// <http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html>
     ///
     /// # Errors
     ///
@@ -280,7 +370,7 @@ impl PamHandle {
     /// # Panics
     ///
     /// Panics if the provided prompt string contains a nul byte
-    pub fn get_user(&self, prompt: Option<&str>) -> PamResult<Cow<'_, str>> {
+    pub fn get_user(&self, prompt: Option<&str>) -> PamResult<Option<String>> {
         let ptr: *mut c_char = core::ptr::null_mut();
         let code = unsafe {
             pam_get_user(
@@ -292,14 +382,39 @@ impl PamHandle {
             )
         };
         match code {
-            PAM_SUCCESS if !ptr.is_null() => unsafe {
-                Ok(CStr::from_ptr(ptr as *const c_char)
-                    .to_str()
-                    .map_err(|_| PamResultCode::PAM_CONV_ERR)?
-                    .into())
+            PAM_SUCCESS => match ptr.is_null() {
+                true => Ok(None),
+                false => match unsafe { CStr::from_ptr(ptr as *const c_char).to_str() } {
+                    Ok(username) => Ok(Some(username.to_string())),
+                    Err(err) => Err(ErrorCode::CONV_ERR),
+                },
             },
-            e => Err(e),
+            e => Err(e.into()),
         }
+    }
+
+    pub(crate) fn authenticate(&self, flags: libc::c_int) -> PamResult<()> {
+        unsafe { pam_authenticate(self.handle.as_ptr(), flags) }.into()
+    }
+
+    pub(crate) fn setcred(&self, flags: libc::c_int) -> PamResult<()> {
+        unsafe { pam_setcred(self.handle.as_ptr(), flags) }.into()
+    }
+
+    pub(crate) fn acct_mgmt(&self, flags: libc::c_int) -> PamResult<()> {
+        unsafe { pam_acct_mgmt(self.handle.as_ptr(), flags) }.into()
+    }
+
+    pub(crate) fn open_session(&self, flags: libc::c_int) -> PamResult<()> {
+        unsafe { pam_open_session(self.handle.as_ptr(), flags) }.into()
+    }
+
+    pub(crate) fn close_session(&self, flags: libc::c_int) -> PamResult<()> {
+        unsafe { pam_close_session(self.handle.as_ptr(), flags) }.into()
+    }
+
+    pub(crate) fn chauthtok(&self, flags: libc::c_int) -> PamResult<()> {
+        unsafe { pam_chauthtok(self.handle.as_ptr(), flags) }.into()
     }
 
     pub fn get_authtok(
@@ -355,51 +470,75 @@ impl PamHandle {
             PAM_SUCCESS if token.is_null() => Ok(None),
             PAM_SUCCESS => {
                 let pass = unsafe { CStr::from_ptr(token as *const c_char).to_str() }
-                    .map_err(|_| PamResultCode::PAM_CONV_ERR)?;
+                    .map_err(|_| ErrorCode::CONV_ERR)?;
                 Ok(if pass.trim().is_empty() {
                     None
                 } else {
                     Some(pass.into())
                 })
             }
-            e => Err(e),
+            e => Err(e.into()),
         }
+    }
+
+    pub fn env_list(&self) -> HashMap<String, String> {
+        let mut result = HashMap::new();
+
+        unsafe {
+            let envlist = pam_getenvlist(self.handle.as_ptr());
+            while !(*envlist).is_null() {
+                let current_ptr = *envlist;
+                let current_env = CStr::from_ptr(current_ptr);
+                let env_var = current_env.to_string_lossy().to_string();
+
+                let (key, val) = match env_var.find("=") {
+                    Some(mid) => env_var.split_at(mid),
+                    None => (env_var.as_str(), ""),
+                };
+
+                result.insert(String::from(key), String::from(val));
+
+                libc::free(current_ptr.cast());
+            }
+
+            libc::free(envlist.cast());
+        }
+
+        result
+    }
+
+    pub fn env_get<'a>(&self, name: Cow<'a, str>) -> Option<String> {
+        let name_value = format!("{}", name);
+        let c_string = CString::new(name_value).unwrap();
+
+        let result = unsafe { pam_getenv(self.handle.as_ptr(), c_string.as_ptr()).as_ref() };
+
+        result.map(|a| {
+            unsafe { CStr::from_ptr(a as *const i8) }
+                .to_string_lossy()
+                .to_string()
+        })
     }
 
     pub fn env_set<'a>(&self, name: Cow<'a, str>, value: Cow<'a, str>) -> PamResult<()> {
         let name_value = format!("{}={}", name.replace("=", "_"), value);
         let c_string = CString::new(name_value).unwrap();
 
-        let code = unsafe { pam_putenv(self.handle.as_ptr(), c_string.as_ptr()) };
-
-        match code {
-            PAM_SUCCESS => Ok(()),
-            err => Err(err),
-        }
+        unsafe { pam_putenv(self.handle.as_ptr(), c_string.as_ptr()) }.into()
     }
 
     pub fn env_reset<'a>(&self, name: Cow<'a, str>) -> PamResult<()> {
         let name_value = format!("{}=", name.replace("=", "_"));
         let c_string = CString::new(name_value).unwrap();
 
-        let code = unsafe { pam_putenv(self.handle.as_ptr(), c_string.as_ptr()) };
-
-        match code {
-            PAM_SUCCESS => Ok(()),
-            err => Err(err),
-        }
+        unsafe { pam_putenv(self.handle.as_ptr(), c_string.as_ptr()) }.into()
     }
 
     pub fn env_remove<'a>(&self, name: Cow<'a, str>) -> PamResult<()> {
         let name_value = format!("{}", name.replace("=", "_"));
         let c_string = CString::new(name_value).unwrap();
 
-        let code = unsafe { pam_putenv(self.handle.as_ptr(), c_string.as_ptr()) };
-
-        match code {
-            PAM_SUCCESS => Ok(()),
-            err => Err(err),
-        }
+        unsafe { pam_putenv(self.handle.as_ptr(), c_string.as_ptr()) }.into()
     }
 
     /// Log a message with the specified level to the syslog.
@@ -436,13 +575,13 @@ pub trait PamHooks {
     /// day or the date, the terminal line, remote hostname, etc. This function
     /// may also determine things like the expiration on passwords, and
     /// respond that the user change it before continuing.
-    fn acct_mgmt(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-        PamResultCode::PAM_IGNORE
+    fn acct_mgmt(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResult<()> {
+        PamResultCode::PAM_IGNORE.into()
     }
 
     /// This function performs the task of authenticating the user.
-    fn sm_authenticate(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-        PamResultCode::PAM_IGNORE
+    fn sm_authenticate(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResult<()> {
+        PamResultCode::PAM_IGNORE.into()
     }
 
     /// This function is used to (re-)set the authentication token of the user.
@@ -452,18 +591,18 @@ pub trait PamHooks {
     /// `PAM_TRY_AGAIN`, subsequently with `PAM_UPDATE_AUTHTOK`. It is only
     /// on the second call that the authorization token is (possibly)
     /// changed.
-    fn sm_chauthtok(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-        PamResultCode::PAM_IGNORE
+    fn sm_chauthtok(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResult<()> {
+        PamResultCode::PAM_IGNORE.into()
     }
 
     /// This function is called to terminate a session.
-    fn sm_close_session(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-        PamResultCode::PAM_IGNORE
+    fn sm_close_session(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResult<()> {
+        PamResultCode::PAM_IGNORE.into()
     }
 
     /// This function is called to commence a session.
-    fn sm_open_session(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-        PamResultCode::PAM_IGNORE
+    fn sm_open_session(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResult<()> {
+        PamResultCode::PAM_IGNORE.into()
     }
 
     /// This function performs the task of altering the credentials of the user
@@ -473,35 +612,35 @@ pub trait PamHooks {
     /// information available to the application. It should only be called after
     /// the user has been authenticated but before a session has been
     /// established.
-    fn sm_setcred(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-        PamResultCode::PAM_IGNORE
+    fn sm_setcred(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResult<()> {
+        PamResultCode::PAM_IGNORE.into()
     }
 }
 
 #[allow(unused_variables)]
 pub trait PamHooksResult {
     fn acct_mgmt(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResult<()> {
-        Err(PamResultCode::PAM_IGNORE)
+        PamResultCode::PAM_IGNORE.into()
     }
 
     fn sm_authenticate(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResult<()> {
-        Err(PamResultCode::PAM_IGNORE)
+        PamResultCode::PAM_IGNORE.into()
     }
 
     fn sm_chauthtok(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResult<()> {
-        Err(PamResultCode::PAM_IGNORE)
+        PamResultCode::PAM_IGNORE.into()
     }
 
     fn sm_close_session(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResult<()> {
-        Err(PamResultCode::PAM_IGNORE)
+        PamResultCode::PAM_IGNORE.into()
     }
 
     fn sm_open_session(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResult<()> {
-        Err(PamResultCode::PAM_IGNORE)
+        PamResultCode::PAM_IGNORE.into()
     }
 
     fn sm_setcred(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResult<()> {
-        Err(PamResultCode::PAM_IGNORE)
+        PamResultCode::PAM_IGNORE.into()
     }
 }
 
@@ -509,27 +648,27 @@ impl<T> PamHooks for T
 where
     T: PamHooksResult,
 {
-    fn acct_mgmt(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-        T::acct_mgmt(pamh, args, flags).map_or_else(|e| e, |_| PAM_SUCCESS)
+    fn acct_mgmt(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResult<()> {
+        T::acct_mgmt(pamh, args, flags)
     }
 
-    fn sm_authenticate(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-        T::sm_authenticate(pamh, args, flags).map_or_else(|e| e, |_| PAM_SUCCESS)
+    fn sm_authenticate(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResult<()> {
+        T::sm_authenticate(pamh, args, flags)
     }
 
-    fn sm_chauthtok(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-        T::sm_chauthtok(pamh, args, flags).map_or_else(|e| e, |_| PAM_SUCCESS)
+    fn sm_chauthtok(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResult<()> {
+        T::sm_chauthtok(pamh, args, flags)
     }
 
-    fn sm_close_session(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-        T::sm_close_session(pamh, args, flags).map_or_else(|e| e, |_| PAM_SUCCESS)
+    fn sm_close_session(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResult<()> {
+        T::sm_close_session(pamh, args, flags)
     }
 
-    fn sm_open_session(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-        T::sm_open_session(pamh, args, flags).map_or_else(|e| e, |_| PAM_SUCCESS)
+    fn sm_open_session(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResult<()> {
+        T::sm_open_session(pamh, args, flags)
     }
 
-    fn sm_setcred(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-        T::sm_setcred(pamh, args, flags).map_or_else(|e| e, |_| PAM_SUCCESS)
+    fn sm_setcred(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResult<()> {
+        T::sm_setcred(pamh, args, flags)
     }
 }

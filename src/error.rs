@@ -1,3 +1,5 @@
+use core::fmt::Display;
+
 use crate::constants::PamResultCode::{self, *};
 use libc::c_int;
 
@@ -35,6 +37,9 @@ pub enum ErrorCode {
     BAD_ITEM = PAM_BAD_ITEM as isize,
     CONV_AGAIN = PAM_CONV_AGAIN as isize,
     INCOMPLETE = PAM_INCOMPLETE as isize,
+    TRY_AGAIN = PAM_TRY_AGAIN as isize,
+    IGNORE = PAM_IGNORE as isize,
+    NO_MODULE_DATA = PAM_NO_MODULE_DATA as isize,
 }
 
 impl ErrorCode {
@@ -68,86 +73,116 @@ impl ErrorCode {
             ErrorCode::BAD_ITEM => PAM_BAD_ITEM as c_int,
             ErrorCode::CONV_AGAIN => PAM_CONV_AGAIN as c_int,
             ErrorCode::INCOMPLETE => PAM_INCOMPLETE as c_int,
-        }
-    }
-    pub fn from_repr(x: c_int) -> Option<ErrorCode> {
-        match PamResultCode::from(x) {
-            PAM_OPEN_ERR => Some(ErrorCode::OPEN_ERR),
-            PAM_SYMBOL_ERR => Some(ErrorCode::SYMBOL_ERR),
-            PAM_SERVICE_ERR => Some(ErrorCode::SERVICE_ERR),
-            PAM_SYSTEM_ERR => Some(ErrorCode::SYSTEM_ERR),
-            PAM_BUF_ERR => Some(ErrorCode::BUF_ERR),
-            PAM_PERM_DENIED => Some(ErrorCode::PERM_DENIED),
-            PAM_AUTH_ERR => Some(ErrorCode::AUTH_ERR),
-            PAM_CRED_INSUFFICIENT => Some(ErrorCode::CRED_INSUFFICIENT),
-            PAM_AUTHINFO_UNAVAIL => Some(ErrorCode::AUTHINFO_UNAVAIL),
-            PAM_USER_UNKNOWN => Some(ErrorCode::USER_UNKNOWN),
-            PAM_MAXTRIES => Some(ErrorCode::MAXTRIES),
-            PAM_NEW_AUTHTOK_REQD => Some(ErrorCode::NEW_AUTHTOK_REQD),
-            PAM_ACCT_EXPIRED => Some(ErrorCode::ACCT_EXPIRED),
-            PAM_SESSION_ERR => Some(ErrorCode::SESSION_ERR),
-            PAM_CRED_UNAVAIL => Some(ErrorCode::CRED_UNAVAIL),
-            PAM_CRED_EXPIRED => Some(ErrorCode::CRED_EXPIRED),
-            PAM_CRED_ERR => Some(ErrorCode::CRED_ERR),
-            PAM_CONV_ERR => Some(ErrorCode::CONV_ERR),
-            PAM_AUTHTOK_ERR => Some(ErrorCode::AUTHTOK_ERR),
-            PAM_AUTHTOK_RECOVERY_ERR => Some(ErrorCode::AUTHTOK_RECOVERY_ERR),
-            PAM_AUTHTOK_LOCK_BUSY => Some(ErrorCode::AUTHTOK_LOCK_BUSY),
-            PAM_AUTHTOK_DISABLE_AGING => Some(ErrorCode::AUTHTOK_DISABLE_AGING),
-            PAM_ABORT => Some(ErrorCode::ABORT),
-            PAM_AUTHTOK_EXPIRED => Some(ErrorCode::AUTHTOK_EXPIRED),
-            PAM_MODULE_UNKNOWN => Some(ErrorCode::MODULE_UNKNOWN),
-            PAM_BAD_ITEM => Some(ErrorCode::BAD_ITEM),
-            PAM_CONV_AGAIN => Some(ErrorCode::CONV_AGAIN),
-            PAM_INCOMPLETE => Some(ErrorCode::INCOMPLETE),
-            _ => None,
+            ErrorCode::TRY_AGAIN => PAM_TRY_AGAIN as c_int,
+            ErrorCode::IGNORE => PAM_IGNORE as c_int,
+            ErrorCode::NO_MODULE_DATA => PAM_NO_MODULE_DATA as c_int,
         }
     }
 }
 
-pub type Error = ErrorCode;
+impl From<PamResultCode> for ErrorCode {
+    fn from(value: PamResultCode) -> Self {
+        match value {
+            PAM_OPEN_ERR => ErrorCode::OPEN_ERR,
+            PAM_SYMBOL_ERR => ErrorCode::SYMBOL_ERR,
+            PAM_SERVICE_ERR => ErrorCode::SERVICE_ERR,
+            PAM_SYSTEM_ERR => ErrorCode::SYSTEM_ERR,
+            PAM_BUF_ERR => ErrorCode::BUF_ERR,
+            PAM_PERM_DENIED => ErrorCode::PERM_DENIED,
+            PAM_AUTH_ERR => ErrorCode::AUTH_ERR,
+            PAM_CRED_INSUFFICIENT => ErrorCode::CRED_INSUFFICIENT,
+            PAM_AUTHINFO_UNAVAIL => ErrorCode::AUTHINFO_UNAVAIL,
+            PAM_USER_UNKNOWN => ErrorCode::USER_UNKNOWN,
+            PAM_MAXTRIES => ErrorCode::MAXTRIES,
+            PAM_NEW_AUTHTOK_REQD => ErrorCode::NEW_AUTHTOK_REQD,
+            PAM_ACCT_EXPIRED => ErrorCode::ACCT_EXPIRED,
+            PAM_SESSION_ERR => ErrorCode::SESSION_ERR,
+            PAM_CRED_UNAVAIL => ErrorCode::CRED_UNAVAIL,
+            PAM_CRED_EXPIRED => ErrorCode::CRED_EXPIRED,
+            PAM_CRED_ERR => ErrorCode::CRED_ERR,
+            PAM_CONV_ERR => ErrorCode::CONV_ERR,
+            PAM_AUTHTOK_ERR => ErrorCode::AUTHTOK_ERR,
+            PAM_AUTHTOK_RECOVERY_ERR => ErrorCode::AUTHTOK_RECOVERY_ERR,
+            PAM_AUTHTOK_LOCK_BUSY => ErrorCode::AUTHTOK_LOCK_BUSY,
+            PAM_AUTHTOK_DISABLE_AGING => ErrorCode::AUTHTOK_DISABLE_AGING,
+            PAM_ABORT => ErrorCode::ABORT,
+            PAM_AUTHTOK_EXPIRED => ErrorCode::AUTHTOK_EXPIRED,
+            PAM_MODULE_UNKNOWN => ErrorCode::MODULE_UNKNOWN,
+            PAM_BAD_ITEM => ErrorCode::BAD_ITEM,
+            PAM_CONV_AGAIN => ErrorCode::CONV_AGAIN,
+            PAM_INCOMPLETE => ErrorCode::INCOMPLETE,
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl Display for ErrorCode {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            ErrorCode::OPEN_ERR => write!(f, "OPEN_ERR"),
+            ErrorCode::SYMBOL_ERR => write!(f, "SYMBOL_ERR"),
+            ErrorCode::SERVICE_ERR => write!(f, "SERVICE_ERR"),
+            ErrorCode::SYSTEM_ERR => write!(f, "SYSTEM_ERR"),
+            ErrorCode::BUF_ERR => write!(f, "BUF_ERR"),
+            ErrorCode::PERM_DENIED => write!(f, "PERM_DENIED"),
+            ErrorCode::AUTH_ERR => write!(f, "AUTH_ERR"),
+            ErrorCode::CRED_INSUFFICIENT => write!(f, "CRED_INSUFFICIENT"),
+            ErrorCode::AUTHINFO_UNAVAIL => write!(f, "AUTHINFO_UNAVAIL"),
+            ErrorCode::USER_UNKNOWN => write!(f, "USER_UNKNOWN"),
+            ErrorCode::MAXTRIES => write!(f, "MAXTRIES"),
+            ErrorCode::NEW_AUTHTOK_REQD => write!(f, "NEW_AUTHTOK_REQD"),
+            ErrorCode::ACCT_EXPIRED => write!(f, "ACCT_EXPIRED"),
+            ErrorCode::SESSION_ERR => write!(f, "SESSION_ERR"),
+            ErrorCode::CRED_UNAVAIL => write!(f, "CRED_UNAVAIL"),
+            ErrorCode::CRED_EXPIRED => write!(f, "CRED_EXPIRED"),
+            ErrorCode::CRED_ERR => write!(f, "CRED_ERR"),
+            ErrorCode::CONV_ERR => write!(f, "CONV_ERR"),
+            ErrorCode::AUTHTOK_ERR => write!(f, "AUTHTOK_ERR"),
+            ErrorCode::AUTHTOK_RECOVERY_ERR => write!(f, "AUTHTOK_RECOVERY_ERR"),
+            ErrorCode::AUTHTOK_LOCK_BUSY => write!(f, "AUTHTOK_LOCK_BUSY"),
+            ErrorCode::AUTHTOK_DISABLE_AGING => write!(f, "AUTHTOK_DISABLE_AGING"),
+            ErrorCode::ABORT => write!(f, "ABORT"),
+            ErrorCode::AUTHTOK_EXPIRED => write!(f, "AUTHTOK_EXPIRED"),
+            ErrorCode::MODULE_UNKNOWN => write!(f, "MODULE_UNKNOWN"),
+            ErrorCode::BAD_ITEM => write!(f, "BAD_ITEM"),
+            ErrorCode::CONV_AGAIN => write!(f, "CONV_AGAIN"),
+            ErrorCode::INCOMPLETE => write!(f, "INCOMPLETE"),
+            ErrorCode::TRY_AGAIN => write!(f, "TRY_AGAIN"),
+            ErrorCode::IGNORE => write!(f, "IGNORE"),
+            ErrorCode::NO_MODULE_DATA => write!(f, "NO_MODULE_DATA"),
+        }
+    }
+}
+
+impl From<c_int> for ErrorCode {
+    fn from(value: c_int) -> Self {
+        ErrorCode::from(PamResultCode::from(value))
+    }
+}
 
 /// Type alias for the result of most PAM methods.
-pub type Result<T> = std::result::Result<T, Error>;
+pub type PamResult<T> = std::result::Result<T, ErrorCode>;
 // Type alias for the result of PAM methods that pass back a consumed struct
 // on error.
 //pub type ExtResult<T, P> = std::result::Result<T, ErrorWith<P>>;
 
-impl From<PamResultCode> for Result<()> {
+impl<T> From<PamResultCode> for PamResult<T>
+where
+    T: Default,
+{
     fn from(value: PamResultCode) -> Self {
         match value {
-            PAM_SUCCESS => Ok(()),
-            PAM_OPEN_ERR => Err(Error::OPEN_ERR),
-            PAM_SYMBOL_ERR => Err(Error::SYMBOL_ERR),
-            PAM_SERVICE_ERR => Err(Error::SERVICE_ERR),
-            PAM_SYSTEM_ERR => Err(Error::SYSTEM_ERR),
-            PAM_BUF_ERR => Err(Error::BUF_ERR),
-            PAM_PERM_DENIED => Err(Error::PERM_DENIED),
-            PAM_AUTH_ERR => Err(Error::AUTH_ERR),
-            PAM_CRED_INSUFFICIENT => Err(Error::CRED_INSUFFICIENT),
-            PAM_AUTHINFO_UNAVAIL => Err(Error::AUTHINFO_UNAVAIL),
-            PAM_USER_UNKNOWN => Err(Error::USER_UNKNOWN),
-            PAM_MAXTRIES => Err(Error::MAXTRIES),
-            PAM_NEW_AUTHTOK_REQD => Err(Error::NEW_AUTHTOK_REQD),
-            PAM_ACCT_EXPIRED => Err(Error::ACCT_EXPIRED),
-            PAM_SESSION_ERR => Err(Error::SESSION_ERR),
-            PAM_CRED_UNAVAIL => Err(Error::CRED_UNAVAIL),
-            PAM_CRED_EXPIRED => Err(Error::CRED_EXPIRED),
-            PAM_CRED_ERR => Err(Error::CRED_ERR),
-            PAM_NO_MODULE_DATA => Err(todo!()),
-            PAM_CONV_ERR => Err(Error::CONV_ERR),
-            PAM_AUTHTOK_ERR => Err(Error::AUTHTOK_ERR),
-            PAM_AUTHTOK_RECOVERY_ERR => Err(Error::AUTHTOK_RECOVERY_ERR),
-            PAM_AUTHTOK_LOCK_BUSY => Err(Error::AUTHTOK_LOCK_BUSY),
-            PAM_AUTHTOK_DISABLE_AGING => Err(Error::AUTHTOK_DISABLE_AGING),
-            PAM_TRY_AGAIN => Err(todo!()),
-            PAM_IGNORE => Err(todo!()),
-            PAM_ABORT => Err(Error::ABORT),
-            PAM_AUTHTOK_EXPIRED => Err(Error::AUTHTOK_EXPIRED),
-            PAM_MODULE_UNKNOWN => Err(Error::MODULE_UNKNOWN),
-            PAM_BAD_ITEM => Err(Error::BAD_ITEM),
-            PAM_CONV_AGAIN => Err(Error::CONV_AGAIN),
-            PAM_INCOMPLETE => Err(Error::INCOMPLETE),
+            PAM_SUCCESS => Ok(T::default()),
+            err => Err(ErrorCode::from(err as c_int)),
+        }
+    }
+}
+
+impl<T> From<PamResult<T>> for PamResultCode {
+    fn from(value: PamResult<T>) -> Self {
+        match value {
+            Ok(_) => PamResultCode::PAM_SUCCESS,
+            Err(err) => PamResultCode::from(err as c_int),
         }
     }
 }

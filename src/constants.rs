@@ -5,7 +5,6 @@ use strum::Display;
 
 pub type PamFlag = c_uint;
 pub type PamItemType = c_int;
-pub type PamMessageStyle = c_int;
 
 // The Linux-PAM flags
 // see /usr/include/security/_pam_types.h
@@ -17,20 +16,32 @@ pub const PAM_REINITIALIZE_CRED: PamFlag = 0x0008;
 pub const PAM_REFRESH_CRED: PamFlag = 0x0010;
 pub const PAM_CHANGE_EXPIRED_AUTHTOK: PamFlag = 0x0020;
 
+pub const PAM_USER_PROMPT: i32 = 9;
+
 // Message styles
-pub const PAM_PROMPT_ECHO_OFF: PamMessageStyle = 1;
-pub const PAM_PROMPT_ECHO_ON: PamMessageStyle = 2;
-pub const PAM_ERROR_MSG: PamMessageStyle = 3;
-pub const PAM_TEXT_INFO: PamMessageStyle = 4;
-/// yes/no/maybe conditionals
-pub const PAM_RADIO_TYPE: PamMessageStyle = 5;
-pub const PAM_BINARY_PROMPT: PamMessageStyle = 7;
+#[allow(non_camel_case_types, clippy::upper_case_acronyms, dead_code)]
+#[derive(Debug, Display, Copy, Clone, PartialEq, Eq, Hash)]
+#[repr(C)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum PamMessageStyle {
+    PAM_PROMPT_ECHO_OFF = 1,
+    PAM_PROMPT_ECHO_ON = 2,
+    PAM_ERROR_MSG = 3,
+    PAM_TEXT_INFO = 4,
+
+    /// yes/no/maybe conditionals
+    #[cfg(target_os = "linux")]
+    PAM_RADIO_TYPE = 5,
+
+    #[cfg(target_os = "linux")]
+    PAM_BINARY_PROMPT = 7,
+}
 
 // The Linux-PAM return values
 // see /usr/include/security/_pam_types.h
 #[allow(non_camel_case_types, clippy::upper_case_acronyms, dead_code)]
 #[derive(Debug, Display, Copy, Clone, PartialEq, Eq, Hash)]
-#[repr(C)]
+#[repr(i32)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum PamResultCode {
     PAM_SUCCESS = 0,

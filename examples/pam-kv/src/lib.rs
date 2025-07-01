@@ -8,8 +8,9 @@ use pam::{
         PamFlag,
         PamResultCode::{PAM_ABORT, PAM_AUTH_ERR, PAM_CONV_ERR, PAM_SYSTEM_ERR, PAM_USER_UNKNOWN},
     },
+    error::{ErrorCode, PamResult},
     items::ItemType,
-    module::{PamHandle, PamHooksResult, PamResult},
+    module::{PamHandle, PamHooksResult},
 };
 use password_hash::{PasswordHash, PasswordVerifier};
 use pbkdf2::Pbkdf2;
@@ -99,7 +100,11 @@ impl PamHooksResult for PamKeyValue {
             .ok_or(PAM_ABORT)
             .tap_err(|_| error!("db option is required"))?;
 
-        let user = pamh.get_user(None).tap_ok(|x| trace!("user: {x}"))?;
+        let user = pamh.get_user(None).tap_ok(|x| match x { Some(x) => trace!("user: {x}"), None => trace!("no user")})?;
+        let Some(user) = user else {
+            return Err(ErrorCode::AUTHINFO_UNAVAIL);
+        };
+
         let pass = pamh
             .get_authtok(ItemType::AuthTok, None)
             .tap(|x| trace!("pass: {x:?}"))?
@@ -136,7 +141,7 @@ impl PamHooksResult for PamKeyValue {
         match data.get(&user.to_string()) {
             None => {
                 error!("user not existing in database");
-                Err(PAM_USER_UNKNOWN)
+                Err(ErrorCode::USER_UNKNOWN)
             }
             Some(user) => match &user.password {
                 Password::Raw(password) if pass == *password => {
@@ -151,7 +156,7 @@ impl PamHooksResult for PamKeyValue {
                 }
                 _ => {
                     error!("wrong password");
-                    Err(PAM_AUTH_ERR)
+                    Err(ErrorCode::AUTH_ERR)
                 }
             },
         }
