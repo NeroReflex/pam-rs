@@ -14,7 +14,7 @@
 ///
 /// use pam::{
 ///     constants::{PamFlag, PamResultCode},
-///     module::{PamHandle, PamHooks},
+///     module::{RawPamHandle, PamHandle, PamHooks},
 /// };
 ///
 /// # fn main() {}
@@ -23,7 +23,7 @@
 ///
 /// impl PamHooks for MyPamModule {
 ///     fn sm_authenticate(
-///         pamh: &mut PamHandle,
+///         pamh: &mut RawPamHandle,
 ///         args: Vec<&CStr>,
 ///         flags: PamFlag,
 ///     ) -> PamResultCode {
@@ -31,7 +31,7 @@
 ///         PamResultCode::PAM_SUCCESS
 ///     }
 ///
-///     fn acct_mgmt(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
+///     fn acct_mgmt(pamh: &mut RawPamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
 ///         println!("Everybody is authorized!");
 ///         PamResultCode::PAM_SUCCESS
 ///     }
@@ -42,14 +42,11 @@ macro_rules! pam_hooks {
     ($ident:ident) => {
         pub use self::pam_hooks_scope::*;
         mod pam_hooks_scope {
-            use core::{
-                ffi::{c_char, c_int, CStr},
-                slice::from_raw_parts,
-            };
+            use core::ffi::{c_char, c_int, CStr};
 
             use $crate::{
                 constants::{PamFlag, PamResultCode},
-                module::{PamHandle, PamHooks},
+                module::{PamHandle, PamHooks, RawPamHandle},
             };
 
             fn extract_argv<'a>(argc: c_int, argv: *const *const c_char) -> $crate::Vec<&'a CStr> {
@@ -60,68 +57,74 @@ macro_rules! pam_hooks {
 
             #[no_mangle]
             pub extern "C" fn pam_sm_acct_mgmt(
-                pamh: &mut PamHandle,
+                pamh: &mut RawPamHandle,
                 flags: PamFlag,
                 argc: c_int,
                 argv: *const *const c_char,
             ) -> PamResultCode {
                 let args = extract_argv(argc, argv);
-                super::$ident::acct_mgmt(pamh, args, flags)
+                let mut handle = unsafe { PamHandle::new(pamh) }.unwrap();
+                super::$ident::acct_mgmt(&mut handle, args, flags)
             }
 
             #[no_mangle]
             pub extern "C" fn pam_sm_authenticate(
-                pamh: &mut PamHandle,
+                pamh: &mut RawPamHandle,
                 flags: PamFlag,
                 argc: c_int,
                 argv: *const *const c_char,
             ) -> PamResultCode {
                 let args = extract_argv(argc, argv);
-                super::$ident::sm_authenticate(pamh, args, flags)
+                let mut handle = unsafe { PamHandle::new(pamh) }.unwrap();
+                super::$ident::sm_authenticate(&mut handle, args, flags)
             }
 
             #[no_mangle]
             pub extern "C" fn pam_sm_chauthtok(
-                pamh: &mut PamHandle,
+                pamh: &mut RawPamHandle,
                 flags: PamFlag,
                 argc: c_int,
                 argv: *const *const c_char,
             ) -> PamResultCode {
                 let args = extract_argv(argc, argv);
-                super::$ident::sm_chauthtok(pamh, args, flags)
+                let mut handle = unsafe { PamHandle::new(pamh) }.unwrap();
+                super::$ident::sm_chauthtok(&mut handle, args, flags)
             }
 
             #[no_mangle]
             pub extern "C" fn pam_sm_close_session(
-                pamh: &mut PamHandle,
+                pamh: &mut RawPamHandle,
                 flags: PamFlag,
                 argc: c_int,
                 argv: *const *const c_char,
             ) -> PamResultCode {
                 let args = extract_argv(argc, argv);
-                super::$ident::sm_close_session(pamh, args, flags)
+                let mut handle = unsafe { PamHandle::new(pamh) }.unwrap();
+                super::$ident::sm_close_session(&mut handle, args, flags)
             }
 
             #[no_mangle]
             pub extern "C" fn pam_sm_open_session(
-                pamh: &mut PamHandle,
+                pamh: &mut RawPamHandle,
                 flags: PamFlag,
                 argc: c_int,
                 argv: *const *const c_char,
             ) -> PamResultCode {
                 let args = extract_argv(argc, argv);
-                super::$ident::sm_open_session(pamh, args, flags)
+                let mut handle = unsafe { PamHandle::new(pamh) }.unwrap();
+                super::$ident::sm_open_session(&mut handle, args, flags)
             }
 
             #[no_mangle]
             pub extern "C" fn pam_sm_setcred(
-                pamh: &mut PamHandle,
+                pamh: &mut RawPamHandle,
                 flags: PamFlag,
                 argc: c_int,
                 argv: *const *const c_char,
             ) -> PamResultCode {
                 let args = extract_argv(argc, argv);
-                super::$ident::sm_setcred(pamh, args, flags)
+                let mut handle = unsafe { PamHandle::new(pamh) }.unwrap();
+                super::$ident::sm_setcred(&mut handle, args, flags)
             }
         }
     };
