@@ -514,7 +514,7 @@ impl PamHandle {
         let result = unsafe { pam_getenv(self.handle.as_ptr(), c_string.as_ptr()).as_ref() };
 
         result.map(|a| {
-            unsafe { CStr::from_ptr(a as *const i8) }
+            unsafe { CStr::from_ptr(a as *const libc::c_char) }
                 .to_string_lossy()
                 .to_string()
         })
