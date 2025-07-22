@@ -3,7 +3,7 @@ use std::{ffi::CStr, str::FromStr};
 use pam::{
     constants::{PamFlag, PamMessageStyle},
     conv::Conv,
-    error::{ErrorCode, PamResult},
+    error::{PamErrorCode, PamResult},
     module::{PamHandle, PamHooks},
     pam_try,
 };
@@ -51,17 +51,17 @@ impl PamHooks for PamSober {
         let password = conv.send(PamMessageStyle::PAM_PROMPT_ECHO_ON, &math)?;
 
         if let Some(password) = password {
-            let password = pam_try!(password.to_str(), Err(ErrorCode::AUTH_ERR));
-            let answer = pam_try!(u32::from_str(password), Err(ErrorCode::AUTH_ERR));
+            let password = pam_try!(password.to_str(), Err(PamErrorCode::AUTH_ERR));
+            let answer = pam_try!(u32::from_str(password), Err(PamErrorCode::AUTH_ERR));
             if answer == a + b {
                 Ok(())
             } else {
                 println!("Wrong answer provided {} + {} != {}", a, b, answer);
-                Err(ErrorCode::AUTH_ERR)
+                Err(PamErrorCode::AUTH_ERR)
             }
         } else {
             println!("You failed the PAM sobriety test.");
-            Err(ErrorCode::AUTH_ERR)
+            Err(PamErrorCode::AUTH_ERR)
         }
     }
 

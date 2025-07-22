@@ -31,6 +31,7 @@ extern crate alloc;
 #[cfg(feature = "std")]
 extern crate std as alloc;
 
+pub mod c_box;
 pub mod constants;
 pub mod context;
 pub mod conv;
@@ -40,6 +41,7 @@ pub mod items;
 #[doc(hidden)]
 pub mod macros;
 pub mod module;
+pub mod responses;
 pub mod session;
 
 #[cfg(not(feature = "std"))]

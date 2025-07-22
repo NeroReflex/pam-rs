@@ -15,7 +15,7 @@ use crate::{
     },
     conv::{into_pam_conv, RawPamConv},
     conversation::ConversationHandler,
-    error::{ErrorCode, PamResult},
+    error::{PamErrorCode, PamResult},
     items::ItemType,
 };
 
@@ -229,7 +229,7 @@ impl PamHandle {
 
         match NonNull::new(handle) {
             Some(handle) => Ok(Self { handle }),
-            None => Err(ErrorCode::ABORT),
+            None => Err(PamErrorCode::ABORT),
         }
     }
 
@@ -389,7 +389,7 @@ impl PamHandle {
                 true => Ok(None),
                 false => match unsafe { CStr::from_ptr(ptr as *const c_char).to_str() } {
                     Ok(username) => Ok(Some(username.to_string())),
-                    Err(_err) => Err(ErrorCode::CONV_ERR),
+                    Err(_err) => Err(PamErrorCode::CONV_ERR),
                 },
             },
             e => Err(e.into()),
@@ -473,7 +473,7 @@ impl PamHandle {
             PAM_SUCCESS if token.is_null() => Ok(None),
             PAM_SUCCESS => {
                 let pass = unsafe { CStr::from_ptr(token as *const c_char).to_str() }
-                    .map_err(|_| ErrorCode::CONV_ERR)?;
+                    .map_err(|_| PamErrorCode::CONV_ERR)?;
                 Ok(if pass.trim().is_empty() {
                     None
                 } else {

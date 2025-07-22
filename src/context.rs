@@ -2,7 +2,7 @@ use crate::{
     constants::PamResultCode,
     conv::{Conv, RawPamConv},
     conversation::ConversationHandler,
-    error::{ErrorCode, PamResult},
+    error::{PamErrorCode, PamResult},
     items::Item,
     module::PamHandle,
     session::{Session, SessionToken},
@@ -61,7 +61,7 @@ impl<ConvT> Context<ConvT> {
             .handle
             .raw_get_item(crate::items::ItemType::AuthTokType)?;
         if ptr.is_null() {
-            return Err(ErrorCode::PERM_DENIED);
+            return Err(PamErrorCode::PERM_DENIED);
         }
         let string = unsafe { CStr::from_ptr(ptr.cast()) }
             .to_string_lossy()
@@ -76,7 +76,7 @@ impl<ConvT> Context<ConvT> {
                 .handle
                 .raw_set_item(crate::items::ItemType::AuthTokType, null()),
             Some(string) => {
-                let cstring = CString::new(string).map_err(|_| ErrorCode::BUF_ERR)?;
+                let cstring = CString::new(string).map_err(|_| PamErrorCode::BUF_ERR)?;
                 self.handle
                     .raw_set_item(crate::items::ItemType::AuthTokType, cstring.as_ptr().cast())
             }
@@ -86,7 +86,7 @@ impl<ConvT> Context<ConvT> {
     pub fn rhost(&self) -> PamResult<String> {
         let ptr = self.handle.raw_get_item(crate::items::ItemType::RHost)?;
         if ptr.is_null() {
-            return Err(ErrorCode::PERM_DENIED);
+            return Err(PamErrorCode::PERM_DENIED);
         }
         let string = unsafe { CStr::from_ptr(ptr.cast()) }
             .to_string_lossy()
@@ -100,7 +100,7 @@ impl<ConvT> Context<ConvT> {
                 .handle
                 .raw_set_item(crate::items::ItemType::RHost, null()),
             Some(string) => {
-                let cstring = CString::new(string).map_err(|_| ErrorCode::BUF_ERR)?;
+                let cstring = CString::new(string).map_err(|_| PamErrorCode::BUF_ERR)?;
                 self.handle
                     .raw_set_item(crate::items::ItemType::RHost, cstring.as_ptr().cast())
             }
@@ -110,7 +110,7 @@ impl<ConvT> Context<ConvT> {
     pub fn ruser(&self) -> PamResult<String> {
         let ptr = self.handle.raw_get_item(crate::items::ItemType::RUser)?;
         if ptr.is_null() {
-            return Err(ErrorCode::PERM_DENIED);
+            return Err(PamErrorCode::PERM_DENIED);
         }
         let string = unsafe { CStr::from_ptr(ptr.cast()) }
             .to_string_lossy()
@@ -124,7 +124,7 @@ impl<ConvT> Context<ConvT> {
                 .handle
                 .raw_set_item(crate::items::ItemType::RUser, null()),
             Some(string) => {
-                let cstring = CString::new(string).map_err(|_| ErrorCode::BUF_ERR)?;
+                let cstring = CString::new(string).map_err(|_| PamErrorCode::BUF_ERR)?;
                 self.handle
                     .raw_set_item(crate::items::ItemType::RUser, cstring.as_ptr().cast())
             }
@@ -134,7 +134,7 @@ impl<ConvT> Context<ConvT> {
     pub fn tty(&self) -> PamResult<String> {
         let ptr = self.handle.raw_get_item(crate::items::ItemType::Tty)?;
         if ptr.is_null() {
-            return Err(ErrorCode::PERM_DENIED);
+            return Err(PamErrorCode::PERM_DENIED);
         }
         let string = unsafe { CStr::from_ptr(ptr.cast()) }
             .to_string_lossy()
@@ -148,7 +148,7 @@ impl<ConvT> Context<ConvT> {
                 .handle
                 .raw_set_item(crate::items::ItemType::Tty, null()),
             Some(string) => {
-                let cstring = CString::new(string).map_err(|_| ErrorCode::BUF_ERR)?;
+                let cstring = CString::new(string).map_err(|_| PamErrorCode::BUF_ERR)?;
                 self.handle
                     .raw_set_item(crate::items::ItemType::Tty, cstring.as_ptr().cast())
             }
@@ -158,7 +158,7 @@ impl<ConvT> Context<ConvT> {
     pub fn user(&self) -> PamResult<String> {
         let ptr = self.handle.raw_get_item(crate::items::ItemType::User)?;
         if ptr.is_null() {
-            return Err(ErrorCode::PERM_DENIED);
+            return Err(PamErrorCode::PERM_DENIED);
         }
         let string = unsafe { CStr::from_ptr(ptr.cast()) }
             .to_string_lossy()
@@ -172,7 +172,7 @@ impl<ConvT> Context<ConvT> {
                 .handle
                 .raw_set_item(crate::items::ItemType::User, null()),
             Some(string) => {
-                let cstring = CString::new(string).map_err(|_| ErrorCode::BUF_ERR)?;
+                let cstring = CString::new(string).map_err(|_| PamErrorCode::BUF_ERR)?;
                 self.handle
                     .raw_set_item(crate::items::ItemType::User, cstring.as_ptr().cast())
             }
@@ -184,7 +184,7 @@ impl<ConvT> Context<ConvT> {
             .handle
             .raw_get_item(crate::items::ItemType::UserPrompt)?;
         if ptr.is_null() {
-            return Err(ErrorCode::PERM_DENIED);
+            return Err(PamErrorCode::PERM_DENIED);
         }
         let string = unsafe { CStr::from_ptr(ptr.cast()) }
             .to_string_lossy()
@@ -198,7 +198,7 @@ impl<ConvT> Context<ConvT> {
                 .handle
                 .raw_set_item(crate::items::ItemType::UserPrompt, null()),
             Some(string) => {
-                let cstring = CString::new(string).map_err(|_| ErrorCode::BUF_ERR)?;
+                let cstring = CString::new(string).map_err(|_| PamErrorCode::BUF_ERR)?;
                 self.handle
                     .raw_set_item(crate::items::ItemType::UserPrompt, cstring.as_ptr().cast())
             }
@@ -261,10 +261,10 @@ where
     ///
     /// # Errors
     /// Expected error codes include:
-    /// - `ErrorCode::ABORT` – General failure
-    /// - `ErrorCode::BUF_ERR` – Memory allocation failure or null byte in
+    /// - `PamErrorCode::ABORT` – General failure
+    /// - `PamErrorCode::BUF_ERR` – Memory allocation failure or null byte in
     ///   parameter.
-    /// - `ErrorCode::SYSTEM_ERR` – Other system error
+    /// - `PamErrorCode::SYSTEM_ERR` – Other system error
     #[must_use]
     #[inline]
     pub fn new(service: &str, username: Option<&str>, conversation: ConvT) -> PamResult<Self> {

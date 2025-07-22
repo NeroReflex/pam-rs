@@ -10,36 +10,37 @@ use libc::{c_char, c_int};
 use crate::{
     constants::{PamMessageStyle, PamResultCode},
     conversation::ConversationHandler,
-    error::{ErrorCode, PamResult},
+    error::{PamErrorCode, PamResult},
     items::Item,
+    responses::Responses,
 };
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub(crate) struct pam_message {
+pub(crate) struct PamMessage {
     msg_style: PamMessageStyle,
     msg: *const c_char,
 }
 #[test]
 fn bindgen_test_layout_pam_message() {
-    const UNINIT: ::std::mem::MaybeUninit<pam_message> = ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::std::mem::MaybeUninit<PamMessage> = ::std::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<pam_message>(),
+        ::std::mem::size_of::<PamMessage>(),
         16usize,
-        concat!("Size of: ", stringify!(pam_message))
+        concat!("Size of: ", stringify!(PamMessage))
     );
     assert_eq!(
-        ::std::mem::align_of::<pam_message>(),
+        ::std::mem::align_of::<PamMessage>(),
         8usize,
-        concat!("Alignment of ", stringify!(pam_message))
+        concat!("Alignment of ", stringify!(PamMessage))
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).msg_style) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
-            stringify!(pam_message),
+            stringify!(PamMessage),
             "::",
             stringify!(msg_style)
         )
@@ -56,34 +57,33 @@ fn bindgen_test_layout_pam_message() {
     );
 }
 
-pub(crate) type PamMessage = pam_message;
-
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub(crate) struct pam_response {
-    resp: *const c_char,
-    resp_retcode: libc::c_int, // Unused - always zero
+pub(crate) struct PamResponse {
+    pub(crate) resp: *mut c_char,
+    pub(crate) resp_retcode: libc::c_int, // Unused - always zero
 }
+
 #[test]
 fn bindgen_test_layout_pam_response() {
-    const UNINIT: ::std::mem::MaybeUninit<pam_response> = ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::std::mem::MaybeUninit<PamResponse> = ::std::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<pam_response>(),
+        ::std::mem::size_of::<PamResponse>(),
         16usize,
-        concat!("Size of: ", stringify!(pam_response))
+        concat!("Size of: ", stringify!(PamResponse))
     );
     assert_eq!(
-        ::std::mem::align_of::<pam_response>(),
+        ::std::mem::align_of::<PamResponse>(),
         8usize,
-        concat!("Alignment of ", stringify!(pam_response))
+        concat!("Alignment of ", stringify!(PamResponse))
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).resp) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
-            stringify!(pam_response),
+            stringify!(PamResponse),
             "::",
             stringify!(resp)
         )
@@ -93,14 +93,12 @@ fn bindgen_test_layout_pam_response() {
         8usize,
         concat!(
             "Offset of field: ",
-            stringify!(pam_response),
+            stringify!(PamResponse),
             "::",
-            stringify!(resp_retcode)
+            stringify!(PamResponse)
         )
     );
 }
-
-pub(crate) type PamResponse = pam_response;
 
 /// `PamConv` acts as a channel for communicating with user.
 ///
@@ -109,7 +107,7 @@ pub(crate) type PamResponse = pam_response;
 /// will be relayed back.
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct pam_conv {
+pub struct RawPamConv {
     conv: unsafe extern "C" fn(
         num_msg: c_int,
         pam_message: *mut *const PamMessage,
@@ -119,7 +117,7 @@ pub struct pam_conv {
     appdata_ptr: *mut libc::c_void,
 }
 
-impl pam_conv {
+impl RawPamConv {
     /// Extracts the pointer to the conversation handler of type `T`.
     ///
     /// Performs the reverse of [`into_pam_conv()`] (except for not rebuilding a `Box`).
@@ -135,8 +133,6 @@ impl pam_conv {
         conv.appdata_ptr.cast()
     }
 }
-
-pub type RawPamConv = pam_conv;
 
 pub struct Conv<'a>(&'a RawPamConv);
 
@@ -170,7 +166,7 @@ impl<'a> Conv<'a> {
         let ret = unsafe {
             (self.0.conv)(
                 1,
-                &mut msg_ptr as *mut *const pam_message,
+                &mut msg_ptr as *mut *const PamMessage,
                 &mut resp_ptr,
                 self.0.appdata_ptr,
             )
@@ -215,24 +211,24 @@ impl<'a> AsRef<RawPamConv> for Conv<'a> {
 
 #[test]
 fn bindgen_test_layout_pam_conv() {
-    const UNINIT: ::std::mem::MaybeUninit<pam_conv> = ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::std::mem::MaybeUninit<RawPamConv> = ::std::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<pam_conv>(),
+        ::std::mem::size_of::<RawPamConv>(),
         16usize,
-        concat!("Size of: ", stringify!(pam_conv))
+        concat!("Size of: ", stringify!(RawPamConv))
     );
     assert_eq!(
-        ::std::mem::align_of::<pam_conv>(),
+        ::std::mem::align_of::<RawPamConv>(),
         8usize,
-        concat!("Alignment of ", stringify!(pam_conv))
+        concat!("Alignment of ", stringify!(RawPamConv))
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).conv) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
-            stringify!(pam_conv),
+            stringify!(RawPamConv),
             "::",
             stringify!(conv)
         )
@@ -297,6 +293,12 @@ pub(crate) unsafe extern "C" fn pam_converse<T: ConversationHandler>(
     // This is sound, as we did the reverse in `into_pam_conv`.
     let handler = &mut *(appdata_ptr.cast::<T>());
 
+    // Prepare response buffer
+    let mut responses = match Responses::new(num_msg as usize) {
+        Ok(buf) => buf,
+        Err(e) => return PamResultCode::from(e.repr()),
+    };
+
     for (i, message) in
         unsafe { slice::from_raw_parts((*msg) as *const &PamMessage, num_msg as usize) }
             .as_ref()
@@ -313,96 +315,28 @@ pub(crate) unsafe extern "C" fn pam_converse<T: ConversationHandler>(
             PamMessageStyle::PAM_PROMPT_ECHO_ON => handler.prompt_echo_on(message_cstr),
             PamMessageStyle::PAM_ERROR_MSG => {
                 handler.error_msg(message_cstr);
-                CString::new("").map_err(|_| ErrorCode::CONV_ERR)
+                CString::new("").map_err(|_| PamErrorCode::CONV_ERR)
             }
             PamMessageStyle::PAM_TEXT_INFO => {
                 handler.text_info(message_cstr);
-                CString::new("").map_err(|_| ErrorCode::CONV_ERR)
+                CString::new("").map_err(|_| PamErrorCode::CONV_ERR)
             }
             #[cfg(target_os = "linux")]
             PamMessageStyle::PAM_RADIO_TYPE => match handler.radio_prompt(message_cstr) {
                 Ok(choice) => match choice {
-                    true => CString::new("yes").map_err(|_| ErrorCode::CONV_ERR),
-                    false => CString::new("no").map_err(|_| ErrorCode::CONV_ERR),
+                    true => CString::new("yes").map_err(|_| PamErrorCode::CONV_ERR),
+                    false => CString::new("no").map_err(|_| PamErrorCode::CONV_ERR),
                 },
                 Err(err) => Err(err),
             },
             #[cfg(target_os = "linux")]
             PamMessageStyle::PAM_BINARY_PROMPT => todo!(),
         };
-    }
 
-    /*
-    // Prepare response buffer
-    let mut responses = match ResponseBuffer::new(num_msg as isize) {
-        Ok(buf) => buf,
-        Err(e) => return e.code().repr(),
-    };
-
-    // Check preconditions for slice::from_raw_parts.
-    // (the checks in `ResponseBuffer::new` are even stricter but better be
-    // safe than sorry).
-    if !(0..=MAX_MSG_NUM).contains(&(num_msg as isize)) {
-        return ErrorCode::BUF_ERR as c_int;
-    }
-
-    let messages = msg_to_slice(&msg, num_msg);
-
-    // Call conversation handler for each message
-    for (i, message) in messages.iter().enumerate() {
-        match message.msg_style as c_int {
-            // Special case: experimental binary messages (Linux)
-            #[cfg(target_os = "linux")]
-            PamMessageStyle::PAM_BINARY_PROMPT => {
-                let (type_, data) = msg_content_to_bin(&message.msg);
-                let result = handler.binary_prompt(type_, data);
-                match result {
-                    Ok(response) => responses.put_binary(i, response.0, &response.1),
-                    Err(code) => return code.repr(),
-                }
-            }
-            // All other cases
-            _ => {
-                // Delegate to the correct handler method based on `msg_style`
-                let result = match message.msg_style as c_int {
-                    PamMessageStyle::PAM_PROMPT_ECHO_ON => {
-                        let text = msg_content_as_cstr(&message.msg);
-                        handler.prompt_echo_on(text).map(map_conv_string)
-                    }
-                    PamMessageStyle::PAM_PROMPT_ECHO_OFF => {
-                        let text = msg_content_as_cstr(&message.msg);
-                        handler.prompt_echo_off(text).map(map_conv_string)
-                    }
-                    PamMessageStyle::PAM_TEXT_INFO => {
-                        let text = msg_content_as_cstr(&message.msg);
-                        handler.text_info(text);
-                        Ok(None)
-                    }
-                    PamMessageStyle::PAM_ERROR_MSG => {
-                        let text = msg_content_as_cstr(&message.msg);
-                        handler.error_msg(text);
-                        Ok(None)
-                    }
-                    #[cfg(target_os = "linux")]
-                    PamMessageStyle::PAM_RADIO_TYPE => {
-                        let text = msg_content_to_cstr(&message.msg);
-                        handler.radio_prompt(text).map(|b| {
-                            if b {
-                                CString::new("yes").ok()
-                            } else {
-                                CString::new("no").ok()
-                            }
-                        })
-                    }
-                    _ => Err(PamResultCode::PAM_CONV_ERR),
-                };
-
-                // Process response and bail out on errors
-                match result {
-                    Ok(response) => responses.put(i, response),
-                    Err(code) => return code.repr(),
-                }
-            }
+        // Process response and bail out on errors
+        match result {
+            Ok(response) => responses.put(i, Some(response)),
+            Err(code) => return PamResultCode::from(code.repr()),
         }
     }
 
@@ -410,8 +344,4 @@ pub(crate) unsafe extern "C" fn pam_converse<T: ConversationHandler>(
     // Sound as long as the PAM modules play by the rules..
     *out_resp = responses.into();
     PamResultCode::PAM_SUCCESS
-
-    */
-
-    todo!()
 }

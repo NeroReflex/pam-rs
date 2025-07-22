@@ -1,9 +1,9 @@
 use std::{collections::HashMap, ffi::CStr, time::Duration};
 
 use pam::{
-    constants::{PamFlag, PamMessageStyle, PamResultCode},
+    constants::{PamFlag, PamMessageStyle},
     conv::Conv,
-    error::{ErrorCode, PamResult},
+    error::{PamErrorCode, PamResult},
     module::{PamHandle, PamHooks},
     pam_try,
 };
@@ -33,12 +33,12 @@ impl PamHooks for PamHttp {
 
         let user = pamh.get_user(None)?;
         let Some(user) = user else {
-            return Err(ErrorCode::AUTHINFO_UNAVAIL);
+            return Err(PamErrorCode::AUTHINFO_UNAVAIL);
         };
 
         let url: &str = match args.get("url") {
             Some(url) => url,
-            None => return Err(ErrorCode::AUTH_ERR),
+            None => return Err(PamErrorCode::AUTH_ERR),
         };
 
         let conv = match pamh.get_item::<Conv>() {
@@ -53,15 +53,15 @@ impl PamHooks for PamHttp {
         };
         let password = conv.send(PamMessageStyle::PAM_PROMPT_ECHO_OFF, "Word, yo: ")?;
         let password = match password {
-            Some(password) => Some(pam_try!(password.to_str(), Err(ErrorCode::AUTH_ERR))),
+            Some(password) => Some(pam_try!(password.to_str(), Err(PamErrorCode::AUTH_ERR))),
             None => None,
         };
         println!("Got a password {:?}", password);
-        let status = pam_try!(get_url(url, &user, password), Err(ErrorCode::AUTH_ERR));
+        let status = pam_try!(get_url(url, &user, password), Err(PamErrorCode::AUTH_ERR));
 
         if !status.is_success() {
             println!("HTTP Error: {}", status);
-            return Err(ErrorCode::AUTH_ERR);
+            return Err(PamErrorCode::AUTH_ERR);
         }
 
         Ok(())

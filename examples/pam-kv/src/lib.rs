@@ -6,9 +6,9 @@ use log::{error, trace, LevelFilter};
 use pam::{
     constants::{
         PamFlag,
-        PamResultCode::{PAM_ABORT, PAM_AUTH_ERR, PAM_CONV_ERR, PAM_SYSTEM_ERR, PAM_USER_UNKNOWN},
+        PamResultCode::{PAM_ABORT, PAM_CONV_ERR, PAM_SYSTEM_ERR},
     },
-    error::{ErrorCode, PamResult},
+    error::{PamErrorCode, PamResult},
     items::ItemType,
     module::{PamHandle, PamHooksResult},
 };
@@ -105,7 +105,7 @@ impl PamHooksResult for PamKeyValue {
             None => trace!("no user"),
         })?;
         let Some(user) = user else {
-            return Err(ErrorCode::AUTHINFO_UNAVAIL);
+            return Err(PamErrorCode::AUTHINFO_UNAVAIL);
         };
 
         let pass = pamh
@@ -144,7 +144,7 @@ impl PamHooksResult for PamKeyValue {
         match data.get(&user.to_string()) {
             None => {
                 error!("user not existing in database");
-                Err(ErrorCode::USER_UNKNOWN)
+                Err(PamErrorCode::USER_UNKNOWN)
             }
             Some(user) => match &user.password {
                 Password::Raw(password) if pass == *password => {
@@ -159,7 +159,7 @@ impl PamHooksResult for PamKeyValue {
                 }
                 _ => {
                     error!("wrong password");
-                    Err(ErrorCode::AUTH_ERR)
+                    Err(PamErrorCode::AUTH_ERR)
                 }
             },
         }

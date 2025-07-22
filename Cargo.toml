@@ -16,7 +16,7 @@ build = "build.rs"
 
 [dependencies]
 libc = { version = "*" }
-strum = { version = "0.24", features = ["derive"] }
+strum = { version = "*", features = ["derive"] }
 bitflags = { version="^2", features = ["serde"] }
 serde = { version="^1", optional=true, features=["derive"] }
 

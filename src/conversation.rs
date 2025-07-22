@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-use crate::error::ErrorCode;
+use crate::error::PamErrorCode;
 use std::ffi::{CStr, CString};
 use std::result::Result;
 
@@ -26,23 +26,23 @@ pub trait ConversationHandler {
     ///
     /// # Errors
     /// You should return one of the following error codes on failure.
-    /// - [`ErrorCode::CONV_ERR`]: Conversation failure.
-    /// - [`ErrorCode::BUF_ERR`]: Memory allocation error.
-    /// - [`ErrorCode::CONV_AGAIN`]: no result yet, the PAM library should
-    ///   pass [`ErrorCode::INCOMPLETE`] to the application and let it
+    /// - [`PamErrorCode::CONV_ERR`]: Conversation failure.
+    /// - [`PamErrorCode::BUF_ERR`]: Memory allocation error.
+    /// - [`PamErrorCode::CONV_AGAIN`]: no result yet, the PAM library should
+    ///   pass [`PamErrorCode::INCOMPLETE`] to the application and let it
     ///   try again later.
-    fn prompt_echo_on(&mut self, prompt: &CStr) -> Result<CString, ErrorCode>;
+    fn prompt_echo_on(&mut self, prompt: &CStr) -> Result<CString, PamErrorCode>;
 
     /// Obtains a string without echoing any text (e.g. password)
     ///
     /// # Errors
     /// You should return one of the following error codes on failure.
-    /// - [`ErrorCode::CONV_ERR`]: Conversation failure.
-    /// - [`ErrorCode::BUF_ERR`]: Memory allocation error.
-    /// - [`ErrorCode::CONV_AGAIN`]: no result yet, the PAM library should
-    ///   pass [`ErrorCode::INCOMPLETE`] to the application and let it
+    /// - [`PamErrorCode::CONV_ERR`]: Conversation failure.
+    /// - [`PamErrorCode::BUF_ERR`]: Memory allocation error.
+    /// - [`PamErrorCode::CONV_AGAIN`]: no result yet, the PAM library should
+    ///   pass [`PamErrorCode::INCOMPLETE`] to the application and let it
     ///   try again later.
-    fn prompt_echo_off(&mut self, prompt: &CStr) -> Result<CString, ErrorCode>;
+    fn prompt_echo_off(&mut self, prompt: &CStr) -> Result<CString, PamErrorCode>;
 
     /// Displays some text.
     fn text_info(&mut self, msg: &CStr);
@@ -57,12 +57,12 @@ pub trait ConversationHandler {
     ///
     /// # Errors
     /// You should return one of the following error codes on failure.
-    /// - [`ErrorCode::CONV_ERR`]: Conversation failure.
-    /// - [`ErrorCode::BUF_ERR`]: Memory allocation error.
-    /// - [`ErrorCode::CONV_AGAIN`]: no result yet, the PAM library should
-    ///   pass [`ErrorCode::INCOMPLETE`] to the application and let it
+    /// - [`PamErrorCode::CONV_ERR`]: Conversation failure.
+    /// - [`PamErrorCode::BUF_ERR`]: Memory allocation error.
+    /// - [`PamErrorCode::CONV_AGAIN`]: no result yet, the PAM library should
+    ///   pass [`PamErrorCode::INCOMPLETE`] to the application and let it
     ///   try again later.
-    fn radio_prompt(&mut self, prompt: &CStr) -> Result<bool, ErrorCode> {
+    fn radio_prompt(&mut self, prompt: &CStr) -> Result<bool, PamErrorCode> {
         let prompt = [prompt.to_bytes(), b" [y/N]\0"].concat();
 
         self.prompt_echo_on(CStr::from_bytes_with_nul(&prompt).unwrap())
@@ -75,12 +75,12 @@ pub trait ConversationHandler {
     ///
     /// # Errors
     /// You should return one of the following error codes on failure.
-    /// - [`ErrorCode::CONV_ERR`]: Conversation failure.
-    /// - [`ErrorCode::BUF_ERR`]: Memory allocation error.
-    /// - [`ErrorCode::CONV_AGAIN`]: no result yet, the PAM library should
-    ///   pass [`ErrorCode::INCOMPLETE`] to the application and let it
+    /// - [`PamErrorCode::CONV_ERR`]: Conversation failure.
+    /// - [`PamErrorCode::BUF_ERR`]: Memory allocation error.
+    /// - [`PamErrorCode::CONV_AGAIN`]: no result yet, the PAM library should
+    ///   pass [`PamErrorCode::INCOMPLETE`] to the application and let it
     ///   try again later.
-    fn binary_prompt(&mut self, _type: u8, _data: &[u8]) -> Result<(u8, Vec<u8>), ErrorCode> {
-        Err(ErrorCode::CONV_ERR)
+    fn binary_prompt(&mut self, _type: u8, _data: &[u8]) -> Result<(u8, Vec<u8>), PamErrorCode> {
+        Err(PamErrorCode::CONV_ERR)
     }
 }
