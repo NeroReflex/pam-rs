@@ -263,6 +263,9 @@ impl PamHandle {
             let data: &T = &*typed_ptr;
             Ok(data)
         } else {
+            if res == crate::module::PamResultCode::PAM_NO_MODULE_DATA {
+                println!("PAM no module data for key {key}");
+            }
             return Err(res.into());
         }
     }
