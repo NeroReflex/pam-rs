@@ -579,11 +579,21 @@ pub trait PamHooks {
     /// may also determine things like the expiration on passwords, and
     /// respond that the user change it before continuing.
     fn acct_mgmt(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResult<()> {
+        #[cfg(target_os = "linux")]
+        {
+            pamh.log(LogLevel::Debug, String::from("Default impl for acct_mgmt"));
+        }
+        
         PamResultCode::PAM_IGNORE.into()
     }
 
     /// This function performs the task of authenticating the user.
     fn sm_authenticate(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResult<()> {
+        #[cfg(target_os = "linux")]
+        {
+            pamh.log(LogLevel::Debug, String::from("Default impl for sm_authenticate"));
+        }
+        
         PamResultCode::PAM_IGNORE.into()
     }
 
@@ -595,16 +605,31 @@ pub trait PamHooks {
     /// on the second call that the authorization token is (possibly)
     /// changed.
     fn sm_chauthtok(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResult<()> {
+        #[cfg(target_os = "linux")]
+        {
+            pamh.log(LogLevel::Debug, String::from("Default impl for sm_chauthtok"));
+        }
+        
         PamResultCode::PAM_IGNORE.into()
     }
 
     /// This function is called to terminate a session.
     fn sm_close_session(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResult<()> {
+        #[cfg(target_os = "linux")]
+        {
+            pamh.log(LogLevel::Debug, String::from("Default impl for sm_close_session"));
+        }
+        
         PamResultCode::PAM_IGNORE.into()
     }
 
     /// This function is called to commence a session.
     fn sm_open_session(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResult<()> {
+        #[cfg(target_os = "linux")]
+        {
+            pamh.log(LogLevel::Debug, String::from("Default impl for sm_open_session"));
+        }
+
         PamResultCode::PAM_IGNORE.into()
     }
 
@@ -616,6 +641,11 @@ pub trait PamHooks {
     /// the user has been authenticated but before a session has been
     /// established.
     fn sm_setcred(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResult<()> {
+        #[cfg(target_os = "linux")]
+        {
+            pamh.log(LogLevel::Debug, String::from("Default impl for sm_setcred"));
+        }
+
         PamResultCode::PAM_IGNORE.into()
     }
 }
