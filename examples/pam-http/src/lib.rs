@@ -53,17 +53,11 @@ impl PamHooks for PamHttp {
         };
         let password = conv.send(PamMessageStyle::PAM_PROMPT_ECHO_OFF, "Word, yo: ")?;
         let password = match password {
-            Some(password) => Some(pam_try!(
-                password.to_str(),
-                Err(ErrorCode::AUTH_ERR)
-            )),
+            Some(password) => Some(pam_try!(password.to_str(), Err(ErrorCode::AUTH_ERR))),
             None => None,
         };
         println!("Got a password {:?}", password);
-        let status = pam_try!(
-            get_url(url, &user, password),
-            Err(ErrorCode::AUTH_ERR)
-        );
+        let status = pam_try!(get_url(url, &user, password), Err(ErrorCode::AUTH_ERR));
 
         if !status.is_success() {
             println!("HTTP Error: {}", status);

@@ -100,7 +100,10 @@ impl PamHooksResult for PamKeyValue {
             .ok_or(PAM_ABORT)
             .tap_err(|_| error!("db option is required"))?;
 
-        let user = pamh.get_user(None).tap_ok(|x| match x { Some(x) => trace!("user: {x}"), None => trace!("no user")})?;
+        let user = pamh.get_user(None).tap_ok(|x| match x {
+            Some(x) => trace!("user: {x}"),
+            None => trace!("no user"),
+        })?;
         let Some(user) = user else {
             return Err(ErrorCode::AUTHINFO_UNAVAIL);
         };

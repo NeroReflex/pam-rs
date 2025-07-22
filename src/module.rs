@@ -236,7 +236,7 @@ impl PamHandle {
     pub unsafe fn end(&self, pam_status: PamResultCode) -> PamResult<()> {
         match unsafe { pam_end(self.handle.as_ptr(), pam_status) } {
             PAM_SUCCESS => Ok(()),
-            err => Err(err.into())
+            err => Err(err.into()),
         }
     }
 
