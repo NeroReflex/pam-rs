@@ -234,7 +234,10 @@ impl PamHandle {
     }
 
     pub unsafe fn end(&self, pam_status: PamResultCode) -> PamResult<()> {
-        unsafe { pam_end(self.handle.as_ptr(), pam_status) }.into()
+        match unsafe { pam_end(self.handle.as_ptr(), pam_status) } {
+            PAM_SUCCESS => Ok(()),
+            err => Err(err.into())
+        }
     }
 
     /// Gets some value, identified by `key`, that has been set by the module
@@ -386,7 +389,7 @@ impl PamHandle {
                 true => Ok(None),
                 false => match unsafe { CStr::from_ptr(ptr as *const c_char).to_str() } {
                     Ok(username) => Ok(Some(username.to_string())),
-                    Err(err) => Err(ErrorCode::CONV_ERR),
+                    Err(_err) => Err(ErrorCode::CONV_ERR),
                 },
             },
             e => Err(e.into()),

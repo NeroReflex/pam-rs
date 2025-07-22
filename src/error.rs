@@ -111,7 +111,8 @@ impl From<PamResultCode> for ErrorCode {
             PAM_BAD_ITEM => ErrorCode::BAD_ITEM,
             PAM_CONV_AGAIN => ErrorCode::CONV_AGAIN,
             PAM_INCOMPLETE => ErrorCode::INCOMPLETE,
-            _ => unreachable!(),
+            PAM_SUCCESS => unreachable!("PAM_SUCCESS is not managed here"),
+            _ => unreachable!("unrecognised return value: {value}"),
         }
     }
 }
@@ -154,11 +155,13 @@ impl Display for ErrorCode {
     }
 }
 
+/*
 impl From<c_int> for ErrorCode {
     fn from(value: c_int) -> Self {
         ErrorCode::from(PamResultCode::from(value))
     }
 }
+*/
 
 /// Type alias for the result of most PAM methods.
 pub type PamResult<T> = std::result::Result<T, ErrorCode>;
@@ -173,7 +176,7 @@ where
     fn from(value: PamResultCode) -> Self {
         match value {
             PAM_SUCCESS => Ok(T::default()),
-            err => Err(ErrorCode::from(err as c_int)),
+            err => Err(ErrorCode::from(err)),
         }
     }
 }

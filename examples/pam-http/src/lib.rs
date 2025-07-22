@@ -15,7 +15,7 @@ pam::pam_hooks!(PamHttp);
 impl PamHooks for PamHttp {
     fn acct_mgmt(_pamh: &mut PamHandle, _args: Vec<&CStr>, _flags: PamFlag) -> PamResult<()> {
         println!("account management");
-        PamResultCode::PAM_SUCCESS.into()
+        Ok(())
     }
 
     // This function performs the task of authenticating the user.
@@ -38,7 +38,7 @@ impl PamHooks for PamHttp {
 
         let url: &str = match args.get("url") {
             Some(url) => url,
-            None => return PamResultCode::PAM_AUTH_ERR.into(),
+            None => return Err(ErrorCode::AUTH_ERR),
         };
 
         let conv = match pamh.get_item::<Conv>() {
@@ -55,27 +55,27 @@ impl PamHooks for PamHttp {
         let password = match password {
             Some(password) => Some(pam_try!(
                 password.to_str(),
-                PamResultCode::PAM_AUTH_ERR.into()
+                Err(ErrorCode::AUTH_ERR)
             )),
             None => None,
         };
         println!("Got a password {:?}", password);
         let status = pam_try!(
             get_url(url, &user, password),
-            PamResultCode::PAM_AUTH_ERR.into()
+            Err(ErrorCode::AUTH_ERR)
         );
 
         if !status.is_success() {
             println!("HTTP Error: {}", status);
-            return PamResultCode::PAM_AUTH_ERR.into();
+            return Err(ErrorCode::AUTH_ERR);
         }
 
-        PamResultCode::PAM_SUCCESS.into()
+        Ok(())
     }
 
     fn sm_setcred(_pamh: &mut PamHandle, _args: Vec<&CStr>, _flags: PamFlag) -> PamResult<()> {
         println!("set credentials");
-        PamResultCode::PAM_SUCCESS.into()
+        Ok(())
     }
 }
 

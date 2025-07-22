@@ -1,9 +1,9 @@
 use std::{ffi::CStr, str::FromStr};
 
 use pam::{
-    constants::{PamFlag, PamMessageStyle, PamResultCode},
+    constants::{PamFlag, PamMessageStyle},
     conv::Conv,
-    error::PamResult,
+    error::{ErrorCode, PamResult},
     module::{PamHandle, PamHooks},
     pam_try,
 };
@@ -15,7 +15,7 @@ pam::pam_hooks!(PamSober);
 impl PamHooks for PamSober {
     fn acct_mgmt(_pamh: &mut PamHandle, _args: Vec<&CStr>, _flags: PamFlag) -> PamResult<()> {
         println!("account management");
-        PamResultCode::PAM_SUCCESS.into()
+        Ok(())
     }
 
     // This function performs the task of authenticating the user.
@@ -51,22 +51,22 @@ impl PamHooks for PamSober {
         let password = conv.send(PamMessageStyle::PAM_PROMPT_ECHO_ON, &math)?;
 
         if let Some(password) = password {
-            let password = pam_try!(password.to_str(), PamResultCode::PAM_AUTH_ERR.into());
-            let answer = pam_try!(u32::from_str(password), PamResultCode::PAM_AUTH_ERR.into());
+            let password = pam_try!(password.to_str(), Err(ErrorCode::AUTH_ERR));
+            let answer = pam_try!(u32::from_str(password), Err(ErrorCode::AUTH_ERR));
             if answer == a + b {
-                PamResultCode::PAM_SUCCESS.into()
+                Ok(())
             } else {
                 println!("Wrong answer provided {} + {} != {}", a, b, answer);
-                PamResultCode::PAM_AUTH_ERR.into()
+                Err(ErrorCode::AUTH_ERR)
             }
         } else {
             println!("You failed the PAM sobriety test.");
-            PamResultCode::PAM_AUTH_ERR.into()
+            Err(ErrorCode::AUTH_ERR)
         }
     }
 
     fn sm_setcred(_pamh: &mut PamHandle, _args: Vec<&CStr>, _flags: PamFlag) -> PamResult<()> {
         println!("set credentials");
-        PamResultCode::PAM_SUCCESS.into()
+        Ok(())
     }
 }
