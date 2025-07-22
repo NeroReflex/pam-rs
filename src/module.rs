@@ -584,7 +584,7 @@ pub trait PamHooks {
             pamh.log(LogLevel::Debug, String::from("Default impl for acct_mgmt"));
         }
         
-        PamResultCode::PAM_IGNORE.into()
+        Err(PamErrorCode::IGNORE)
     }
 
     /// This function performs the task of authenticating the user.
@@ -594,7 +594,7 @@ pub trait PamHooks {
             pamh.log(LogLevel::Debug, String::from("Default impl for sm_authenticate"));
         }
         
-        PamResultCode::PAM_IGNORE.into()
+        Err(PamErrorCode::IGNORE)
     }
 
     /// This function is used to (re-)set the authentication token of the user.
@@ -610,7 +610,7 @@ pub trait PamHooks {
             pamh.log(LogLevel::Debug, String::from("Default impl for sm_chauthtok"));
         }
         
-        PamResultCode::PAM_IGNORE.into()
+        Err(PamErrorCode::IGNORE)
     }
 
     /// This function is called to terminate a session.
@@ -620,7 +620,7 @@ pub trait PamHooks {
             pamh.log(LogLevel::Debug, String::from("Default impl for sm_close_session"));
         }
         
-        PamResultCode::PAM_IGNORE.into()
+        Err(PamErrorCode::IGNORE)
     }
 
     /// This function is called to commence a session.
@@ -630,7 +630,7 @@ pub trait PamHooks {
             pamh.log(LogLevel::Debug, String::from("Default impl for sm_open_session"));
         }
 
-        PamResultCode::PAM_IGNORE.into()
+        Err(PamErrorCode::IGNORE)
     }
 
     /// This function performs the task of altering the credentials of the user
@@ -646,7 +646,7 @@ pub trait PamHooks {
             pamh.log(LogLevel::Debug, String::from("Default impl for sm_setcred"));
         }
 
-        PamResultCode::PAM_IGNORE.into()
+        Err(PamErrorCode::IGNORE)
     }
 }
 
