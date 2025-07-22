@@ -111,6 +111,7 @@ impl From<PamResultCode> for PamErrorCode {
             PAM_BAD_ITEM => PamErrorCode::BAD_ITEM,
             PAM_CONV_AGAIN => PamErrorCode::CONV_AGAIN,
             PAM_INCOMPLETE => PamErrorCode::INCOMPLETE,
+            PAM_NO_MODULE_DATA => PamErrorCode::NO_MODULE_DATA,
             PAM_SUCCESS => unreachable!("PAM_SUCCESS is not managed here"),
             _ => unreachable!("unrecognised return value: {value}"),
         }
